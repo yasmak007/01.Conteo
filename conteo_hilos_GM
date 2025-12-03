@@ -1,0 +1,98 @@
+import cv2
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.signal import find_peaks
+
+def detectar_y_contar_filamentos_intensidad_y(ruta_imagen):
+    """
+    Cuenta los picos (filamentos) cuya intensidad normalizada (eje Y) es >= 0.950.
+    Esto equivale a contar las 'líneas que se cruzan con Y=0.950'.
+    """
+    # --- 1. Cargar y Preprocesar ---
+    img = cv2.imread(ruta_imagen)
+    if img is None:
+        print(f"Error: No se pudo cargar la imagen '{ruta_imagen}'. Revise la ruta.")
+        return 0, 0.950
+    
+    img_procesada = img.copy()
+    gray = cv2.cvtColor(img_procesada, cv2.COLOR_BGR2GRAY)
+    alto_total, ancho_total = gray.shape
+
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+
+    # --- 2. Detección de la Región de Interés (ROI) de la Cinta ---
+    perfil_horizontal = np.sum(blur, axis=1)
+    umbral_roi = perfil_horizontal.max() * 0.5 
+    indices_cinta = np.where(perfil_horizontal > umbral_roi)[0]
+
+    if len(indices_cinta) == 0:
+        print("Error: No se pudo localizar la cinta blanca.")
+        return 0, 0.950
+
+    y_inicio_roi = indices_cinta[0]
+    y_fin_roi = indices_cinta[-1]
+    
+    cinta_roi = blur[y_inicio_roi:y_fin_roi, :]
+    
+    # --- 3. Generación del Perfil Vertical ---
+    perfil_vertical = np.sum(cinta_roi.astype(np.float32), axis=0)
+    perfil_normalizado = perfil_vertical / perfil_vertical.max()
+    
+    # --- 4. Detección y Filtrado de Picos por Intensidad Y (Y >= 0.950) ---
+    
+    Y_CORTE_NORMALIZADO = 0.950 
+    distancia_minima = int(ancho_total / 25) 
+    
+    picos_indices, propiedades = find_peaks(
+        perfil_normalizado, 
+        distance=distancia_minima, 
+        prominence=0.1, 
+        height=Y_CORTE_NORMALIZADO # <--- Contar solo picos que están en o por encima de Y=0.950
+    )
+    
+    num_filamentos_filtrados = len(picos_indices)
+
+    # --- 5. Visualización y Enumeración ---
+    
+    img_enumerada = img_procesada.copy()
+    y_centro_cinta = (y_inicio_roi + y_fin_roi) // 2
+    
+    # Enumerar los picos que cumplen el filtro de intensidad
+    for i, x_pos in enumerate(picos_indices):
+        cv2.putText(img_enumerada, 
+                    f"OK:{i + 1}", 
+                    (x_pos - 30, y_centro_cinta), 
+                    cv2.FONT_HERSHEY_SIMPLEX, 
+                    0.7, 
+                    (0, 255, 255), # Amarillo
+                    2)
+
+    # Mostrar gráfica del perfil
+    plt.figure(figsize=(12, 5))
+    plt.plot(perfil_normalizado, label="Perfil de Intensidad Vertical")
+    plt.plot(picos_indices, perfil_normalizado[picos_indices], "o", label=f"Picos con Y >= {Y_CORTE_NORMALIZADO} ({num_filamentos_filtrados})")
+    plt.axhline(y=Y_CORTE_NORMALIZADO, color='r', linestyle='--', label=f"Línea de Cruce Y={Y_CORTE_NORMALIZADO}")
+    plt.title(f"Detección de Filamentos Filtrados por Cruce Y (Conteo: {num_filamentos_filtrados})")
+    plt.xlabel("Columna de Píxeles (Coordenadas X)")
+    plt.ylabel("Intensidad Normalizada")
+    plt.legend()
+    plt.grid(axis='y')
+    plt.show()
+
+    # --- 6. SALIDA DE IMAGEN A TAMAÑO 450x450 (REQUERIDO) ---
+    img_final_450 = cv2.resize(img_enumerada, (450, 450))
+    cv2.imshow('4. Resultado Final (450x450)', img_final_450)
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
+    
+    return num_filamentos_filtrados, Y_CORTE_NORMALIZADO
+
+# --- Ejecución ---
+ruta_del_archivo = "Cinta-Hilos.jpg"
+conteo_final, Y_CORTE_NORMALIZADO = detectar_y_contar_filamentos_intensidad_y(ruta_del_archivo)
+
+print("\n" + "="*50)
+print(f"✅ RESULTADO FINAL:")
+print(f"Líneas que cruzan Y={Y_CORTE_NORMALIZADO}: **{conteo_final}**")
+print(f"La imagen de salida fue redimensionada a 450x450 píxeles.")
+print("="*50)
