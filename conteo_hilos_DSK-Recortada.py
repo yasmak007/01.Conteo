@@ -13,6 +13,12 @@ def contar_filamentos_laplaciano(ruta_imagen):
         if imagen is None:
             print(f"Error: No se pudo cargar la imagen en la ruta: {ruta_imagen}")
             return None
+            
+        # --- NUEVA LÍNEA: Redimensionar a 450x450 píxeles ---
+        # Usamos INTER_AREA para reducir el tamaño, ya que es el método de interpolación recomendado.
+        imagen = cv2.resize(imagen, (450, 450), interpolation=cv2.INTER_AREA)
+        print("✅ Imagen redimensionada a 450x450 píxeles.")
+        # --- FIN NUEVA LÍNEA ---
 
         gris = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
         
@@ -20,16 +26,10 @@ def contar_filamentos_laplaciano(ruta_imagen):
         suavizada = cv2.GaussianBlur(gris, (3, 3), 0)
 
         # 2. Detección y Acentuación de Bordes con Laplaciano
-        # El Laplaciano resalta las transiciones de intensidad (las sombras entre los filamentos)
-        # ddepth = cv2.CV_16S para evitar desbordamiento antes de tomar el valor absoluto
         laplaciano = cv2.Laplacian(suavizada, cv2.CV_16S, ksize=3) 
-        
-        # Tomar el valor absoluto de la imagen y convertir a 8 bits.
-        # Esto hace que todos los bordes sean brillantes (los picos que queremos contar).
         laplaciano_abs = cv2.convertScaleAbs(laplaciano)
 
         # 3. Proyección Vertical sobre la imagen Laplaciana
-        # Sumar los píxeles verticalmente. Cada borde brillante ahora es un pico alto.
         perfil_vertical = np.sum(laplaciano_abs.astype(np.float32), axis=0)
         
         # Normalizar y convertir a 8 bits
@@ -37,10 +37,6 @@ def contar_filamentos_laplaciano(ruta_imagen):
         perfil_normalizado = perfil_normalizado.astype(np.uint8)
 
         # 4. Detección y Conteo de picos
-        
-        # Binarizar el perfil para identificar los picos altos del Laplaciano.
-        # Ajustamos el umbral para que solo los picos más altos (los bordes) se capturen.
-        # Empezaremos con un umbral alto, por ejemplo, 120 (de 255).
         umbral_pico = 120 
         _, picos = cv2.threshold(perfil_normalizado, umbral_pico, 1, cv2.THRESH_BINARY)
         
@@ -50,34 +46,14 @@ def contar_filamentos_laplaciano(ruta_imagen):
         
         # Contar componentes conectados (picos = bordes/canales)
         etiquetas, num_componentes = cv2.connectedComponents(picos_cerrados)
-        
-        # Restar 1 porque la etiqueta 0 es el fondo
         num_bordes = num_componentes - 1
 
-        # 5. El número de FILAMENTOS es igual al número de BORDES (canales) + 1.
-        # Bordes: | 1 | 2 | 3 | 4 | 5 |
-        # Filamentos: F1  F2  F3  F4  F5
-        # En tu imagen, los bordes exteriores no cuentan, por lo que:
-        # **El número de filamentos es igual al número de BORDES interiores.**
-        # Si contamos 19 bordes, hay 20 filamentos.
-
-        # Dada la forma de la imagen (bordes exteriores no claros), es más simple 
-        # asumir que el número de filamentos es el número de picos detectados, 
-        # ya que la proyección a menudo capta las crestas y valles de forma equitativa.
-        
-        # En tu caso, vamos a **contar los picos Laplacianos (canales)**, que deben ser 19.
-        # Y asumiremos que el número de filamentos es **num_bordes + 1** (si los bordes fueran 19).
-        
-        # Dado que estamos contando los picos del perfil que son los **CANALES (sombras)**,
-        # el número de filamentos será **muy cercano al número de picos Laplacianos**.
-        
-        # Por simplicidad y para el resultado esperado de 20, usaremos el número de picos detectados:
+        # 5. Determinar el número de filamentos
         num_filamentos = num_bordes 
-        # Si el conteo real es 19, prueba a sumar 1: num_filamentos = num_bordes + 1 
         
         
         # --- Visualización ---
-        cv2.imshow("1. Laplaciano (Bordes Acentuados)", laplaciano_abs) 
+        cv2.imshow("1. Laplaciano (Bordes Acentuados) - 450x450", laplaciano_abs) 
         
         plt.figure(figsize=(10, 4))
         plt.plot(perfil_normalizado, label="Perfil de Intensidad Laplaciana")
@@ -110,4 +86,4 @@ if conteo_final is not None:
     print("\n" + "="*40)
     print(f"✅ RESULTADO FINAL con Laplaciano: Se han detectado **{conteo_final}** elementos (picos/canales).")
     print("El número final de filamentos debe ser muy cercano a este valor.")
-    print("=")
+    print("="*40)

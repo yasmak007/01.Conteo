@@ -17,6 +17,12 @@ def procesar_cinta(ruta_imagen):
             print(f"Error: No se pudo cargar la imagen en la ruta: {ruta_imagen}")
             return None
 
+        # --- NUEVA LÍNEA: Redimensionar a 450x450 píxeles ---
+        # Usamos INTER_AREA para reducir el tamaño, ya que es el método de interpolación recomendado.
+        imagen = cv2.resize(imagen, (1050, 750), interpolation=cv2.INTER_AREA)
+        print("✅ Imagen redimensionada a 450x450 píxeles.")
+        # --- FIN NUEVA LÍNEA ---
+
         # 2. Preprocesamiento: Convertir a escala de grises
         gris = cv2.cvtColor(imagen, cv2.COLOR_BGR2GRAY)
 

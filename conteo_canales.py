@@ -11,11 +11,11 @@ def detectar_21_lineas_hough(ruta_imagen):
 
     alto, ancho, _ = img_original.shape
     
-    # 🚨 CAMBIO 1: Usar la imagen en escala de grises directamente para realzar los surcos/sombras
+    # CAMBIO 1: Usar la imagen en escala de grises directamente para realzar los surcos/sombras
     gray = cv2.cvtColor(img_original, cv2.COLOR_BGR2GRAY)
 
     # --- 2. Binarización ADAPTATIVA (CLAVE) ---
-    # 🚨 CAMBIO 2: Usamos THRESH_BINARY_INV. Esto hace que los surcos oscuros (los límites) sean BLANCOS
+    # CAMBIO 2: Usamos THRESH_BINARY_INV. Esto hace que los surcos oscuros (los límites) sean BLANCOS
     img_binaria = cv2.adaptiveThreshold(
         gray, 255, 
         cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
@@ -58,7 +58,7 @@ def detectar_21_lineas_hough(ruta_imagen):
         for i, line in enumerate(lines):
             x1, y1, x2, y2 = line[0]
             
-            # 🚨 CAMBIO 3: Filtro de verticalidad más flexible.
+            # CAMBIO 3: Filtro de verticalidad más flexible.
             # Permitimos hasta 20 píxeles de inclinación (antes era 10)
             if abs(x2 - x1) < 20: 
                 
@@ -115,7 +115,7 @@ def detectar_21_lineas_hough(ruta_imagen):
     # --- 7. Mostrar Resultado y Medidas ---
     
     print("\n" + "="*70)
-    print(f"✅ Se detectaron **{num_filtrados}** líneas. (Objetivo: 21)")
+    print(f"Se detectaron **{num_filtrados}** líneas. (Objetivo: 21)")
     print("\n📐 Medidas de cada línea detectada (en píxeles):")
     if medidas_impresas:
         for medida in medidas_impresas:
